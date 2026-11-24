@@ -10,7 +10,11 @@ class Settings(BaseSettings):
     # Database
     _backend_dir: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     _default_db_path: str = os.path.join(_backend_dir, "prepspire.db").replace("\\", "/")
-    DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{_default_db_path}")
+    # Database URL with postgres:// -> postgresql:// normalization for SQLAlchemy 2.0
+    _raw_db_url: str = os.getenv("DATABASE_URL", f"sqlite:///{_default_db_path}")
+    if _raw_db_url.startswith("postgres://"):
+        _raw_db_url = _raw_db_url.replace("postgres://", "postgresql://", 1)
+    DATABASE_URL: str = _raw_db_url
     
     # JWT & Security
     SECRET_KEY: str = os.getenv("SECRET_KEY", "prepspire_super_secret_key_jwt_2026_dev_mode_secure")
@@ -35,14 +39,20 @@ class Settings(BaseSettings):
     # - "offline": Use heuristic evaluation engine (no AI, always available)
     DEFAULT_EVALUATION_MODE: str = os.getenv("DEFAULT_EVALUATION_MODE", "offline")
     
-    # CORS
-    CORS_ORIGINS: List[str] = [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "*"
-    ]
+    # CORS (can be overridden via comma-separated string in env: CORS_ORIGINS=http://...,https://...)
+    _cors_env: str = os.getenv("CORS_ORIGINS", "")
+    CORS_ORIGINS: List[str] = (
+        [origin.strip() for origin in _cors_env.split(",") if origin.strip()]
+        if _cors_env
+        else [
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost",
+            "*"
+        ]
+    )
 
     class Config:
         env_file = ".env"

@@ -13,9 +13,16 @@ import {
   AISettings
 } from '../types';
 
-const API_BASE = (typeof window !== 'undefined' && window.location.port === '5173')
-  ? '/api/v1'
-  : 'http://127.0.0.1:8000/api/v1';
+// Determine API Base:
+// 1. If VITE_API_URL is configured (e.g. separate cloud backend domain), use it
+// 2. If running behind Nginx / reverse proxy or Vite dev server, use relative '/api/v1'
+// 3. Fallback to direct localhost port 8000 for direct file serving
+const rawBase = (import.meta as any).env?.VITE_API_URL;
+const API_BASE = rawBase 
+  ? (rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase) + '/api/v1'
+  : (typeof window !== 'undefined' && (window.location.port === '5173' || window.location.port === '80' || !window.location.port))
+    ? '/api/v1'
+    : 'http://127.0.0.1:8000/api/v1';
 
 class ApiService {
   private token: string | null = null;

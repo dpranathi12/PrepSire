@@ -172,7 +172,11 @@ export const CareerFit: React.FC<CareerFitProps> = ({ currentUser, profile }) =>
       }, 300);
 
     } catch (err: any) {
-      setErrorMessage(err.message || 'Analysis failed. Please check your document and try again.');
+      console.error('CareerFit analysis error:', err);
+      const msg = err.message || 'Analysis failed. Please check your document and try again.';
+      setErrorMessage(msg);
+      // Ensure user sees the error immediately even if scrolled down
+      window.scrollTo({ top: 120, behavior: 'smooth' });
     } finally {
       setIsAnalyzing(false);
       setAnalysisProgressStep('');

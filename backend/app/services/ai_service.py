@@ -83,6 +83,12 @@ async def evaluate_interview_answer(
     mode = requested_mode or settings.DEFAULT_EVALUATION_MODE
     gemini_key = settings.GEMINI_API_KEY
 
+    # Auto-mode for Cloud Deployments:
+    # If mode is not specified or set to ollama in a container where Ollama is offline,
+    # automatically attempt Gemini (if key configured) before falling back to offline.
+    if mode == "auto":
+        mode = "gemini" if gemini_key else "offline"
+
     # --- OLLAMA: Primary local AI provider ---
     if mode == "ollama":
         logger.info(f"Attempting Ollama evaluation for role={role}, category={category}")
@@ -108,7 +114,10 @@ async def evaluate_interview_answer(
             ollama_result["words_per_minute"] = offline.get("words_per_minute", 0.0)
             ollama_result["star_method_used"] = offline.get("star_method_used", False)
             return ollama_result
-        logger.warning("Ollama evaluation failed or unavailable — falling back to offline heuristics")
+        
+        logger.warning("Ollama evaluation failed or unavailable — checking for Gemini fallback")
+        if gemini_key:
+            mode = "gemini"
 
     # --- GEMINI: Alternative cloud provider ---
     if mode == "gemini" and gemini_key:
@@ -181,6 +190,9 @@ async def get_career_coach_response(
     mode = requested_mode or settings.DEFAULT_EVALUATION_MODE
     gemini_key = settings.GEMINI_API_KEY
 
+    if mode == "auto":
+        mode = "gemini" if gemini_key else "offline"
+
     # --- OLLAMA: Primary local AI provider for Career Coach ---
     if mode == "ollama":
         logger.info("Attempting Ollama career coach response")
@@ -203,7 +215,9 @@ async def get_career_coach_response(
         if reply and len(reply.strip()) > 20:
             logger.info("Ollama career coach succeeded")
             return {"reply": reply.strip(), "mode": "ollama"}
-        logger.warning("Ollama career coach failed — falling back")
+        logger.warning("Ollama career coach failed — checking for Gemini fallback")
+        if gemini_key:
+            mode = "gemini"
 
     # Build conversation context string if history is present
     history_str = ""

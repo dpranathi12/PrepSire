@@ -2,7 +2,13 @@ import os
 import re
 from typing import Optional, Tuple
 
-# PDF Extraction using pypdf (installed and verified)
+# PDF Extraction — try pdfplumber first (best for real-world resumes),
+# fall back to pypdf, then pdfminer.
+try:
+    import pdfplumber
+except ImportError:
+    pdfplumber = None
+
 try:
     import pypdf
 except ImportError:
@@ -22,30 +28,50 @@ except ImportError:
 
 
 def extract_text_from_pdf(file_path: str) -> str:
-    """Extract complete text from a multi-page PDF document."""
+    """Extract complete text from a PDF resume.
+    
+    Strategy (best → fallback):
+      1. pdfplumber  — handles most real-world PDFs (text boxes, columns, tables)
+      2. pypdf       — lightweight fallback
+      3. pytesseract — OCR for scanned / image-only PDFs
+    """
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
-    
-    if pypdf is None:
-        raise RuntimeError("pypdf is required for PDF parsing.")
-    
-    extracted_text = []
-    try:
-        reader = pypdf.PdfReader(file_path)
-        for page_idx, page in enumerate(reader.pages):
-            text = page.extract_text()
-            if text and text.strip():
-                extracted_text.append(text.strip())
-    except Exception as e:
-        raise RuntimeError(f"Error reading PDF file: {str(e)}")
-    
-    full_text = "\n\n".join(extracted_text).strip()
-    
-    # If standard text extraction yielded almost nothing, attempt OCR if available
+
+    full_text = ""
+
+    # --- Attempt 1: pdfplumber ---
+    if pdfplumber is not None:
+        try:
+            pages_text = []
+            with pdfplumber.open(file_path) as pdf:
+                for page in pdf.pages:
+                    t = page.extract_text()
+                    if t and t.strip():
+                        pages_text.append(t.strip())
+            full_text = "\n\n".join(pages_text).strip()
+        except Exception:
+            full_text = ""
+
+    # --- Attempt 2: pypdf fallback ---
+    if len(full_text) < 30 and pypdf is not None:
+        try:
+            extracted = []
+            reader = pypdf.PdfReader(file_path)
+            for page in reader.pages:
+                t = page.extract_text()
+                if t and t.strip():
+                    extracted.append(t.strip())
+            candidate = "\n\n".join(extracted).strip()
+            if len(candidate) > len(full_text):
+                full_text = candidate
+        except Exception:
+            pass
+
+    # --- Attempt 3: OCR fallback for scanned PDFs ---
     if len(full_text) < 30 and pytesseract is not None:
         try:
             from PIL import Image
-            # Check if pdf has extractable images or scanned page renders
             ocr_text = []
             reader = pypdf.PdfReader(file_path)
             for page in reader.pages:
@@ -57,8 +83,8 @@ def extract_text_from_pdf(file_path: str) -> str:
             if ocr_text:
                 full_text = "\n\n".join(ocr_text).strip()
         except Exception:
-            pass  # Fallback to existing extracted text
-            
+            pass
+
     return full_text
 
 

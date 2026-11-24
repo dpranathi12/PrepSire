@@ -2,14 +2,17 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
 from app.core.config import settings
 
-connect_args = {}
+engine_kwargs = {"echo": False}
 if settings.DATABASE_URL.startswith("sqlite"):
-    connect_args = {"check_same_thread": False, "timeout": 20}
+    engine_kwargs["connect_args"] = {"check_same_thread": False, "timeout": 20}
+else:
+    # Production PostgreSQL connection health check & recycle
+    engine_kwargs["pool_pre_ping"] = True
+    engine_kwargs["pool_recycle"] = 300
 
 engine = create_engine(
     settings.DATABASE_URL,
-    connect_args=connect_args,
-    echo=False
+    **engine_kwargs
 )
 
 @event.listens_for(engine, "connect")
