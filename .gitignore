@@ -1,0 +1,33 @@
+# Node & Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python & Backend
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.pytest_cache/
+*.db*
+*.log
+*.coverage
+htmlcov/
+*.zip
+
+# Environment Secrets
+.env
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
