@@ -1,0 +1,43 @@
+services:
+  # ========================================================
+  # PrepSpire AI - Backend Web Service (FastAPI Docker)
+  # ========================================================
+  - type: web
+    name: prepspire-backend
+    runtime: docker
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    plan: free
+    region: frankfurt # or oregon, ohio, singapore
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false # Set in Render Dashboard (Supabase PostgreSQL URL)
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false # Set your Gemini API key in dashboard
+      - key: GEMINI_MODEL
+        value: gemini-1.5-flash
+      - key: DEFAULT_EVALUATION_MODE
+        value: auto
+      - key: CORS_ORIGINS
+        value: "*"
+
+  # ========================================================
+  # PrepSpire AI - Frontend Web Service (React Nginx Docker)
+  # ========================================================
+  - type: web
+    name: prepspire-frontend
+    runtime: docker
+    dockerContext: ./frontend
+    dockerfilePath: ./frontend/Dockerfile
+    plan: free
+    region: frankfurt
+    healthCheckPath: /
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: prepspire-backend
+          property: host
